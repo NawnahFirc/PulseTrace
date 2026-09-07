@@ -4,65 +4,103 @@ A C++20 Linux process-monitoring and diagnostics project developed incrementally
 The goal is practical systems engineering: procfs, ownership, sampling correctness,
 concurrency, explainable diagnostics, debugging and measured performance.
 
-**Status: Milestone 0.** The executable provides help and version output. Process
-monitoring, anomaly rules, networking and the dashboard are not implemented yet.
+**Status: Milestone 1, version 0.2.0.** The CLI discovers visible PIDs. Process
+metadata, CPU/memory metrics, rules, networking and the dashboard are future work.
 
 ## Requirements and build
 
-Linux, GCC or Clang with C++20 support, CMake 3.24+, and Ninja (or Make).
-The current code has been verified with GCC 13.3.0 and CMake 4.4.3 on Linux.
-There are no third-party C++ dependencies at this milestone.
+Linux, GCC or Clang with C++20 support, CMake 3.24+, Ninja (or Make). Verified with
+GCC 13.3.0, CMake 4.4.3 and Catch2 3.8.1. Clang is not yet verified. No third-party
+runtime dependency; Catch2 is used only for tests.
 
-Ubuntu 24.04 / Debian-family setup:
+Ubuntu 24.04 setup:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y build-essential cmake ninja-build git
 ```
 
-From the repository root:
+Clone PulseTrace and explicitly obtain the test dependency alongside it:
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPULSETRACE_WARNINGS_AS_ERRORS=ON
+git clone https://github.com/NawnahFirc/PulseTrace.git
+git clone --depth 1 --branch v3.8.1 https://github.com/catchorg/Catch2.git Catch2
+cd PulseTrace
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DPULSETRACE_WARNINGS_AS_ERRORS=ON \
+  -DPULSETRACE_CATCH2_DIR="$PWD/../Catch2/extras"
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
-./build/pulsetrace
 ./build/pulsetrace --version
-./build/pulsetrace --help
+./build/pulsetrace --list-pids
 ```
 
-Default output:
+For an existing clone, use `git pull --ff-only` instead of cloning it again. The
+Catch2 path must contain upstream catch_amalgamated.hpp and catch_amalgamated.cpp.
+CMake does not download dependencies. A production-only build can use
+`-DBUILD_TESTING=OFF` without Catch2.
 
-```text
-PulseTrace 0.1.0
-Usage: pulsetrace [--help | --version]
-Linux process monitoring and diagnostics.
-Milestone 0: build scaffold; monitoring is not implemented yet.
-```
+Expected version: `PulseTrace 0.2.0`. PID output is ascending integers, one per line;
+actual values vary on every machine and can change during scanning.
 
-CTest currently runs one CLI contract script containing six cases. It checks exact
-output and exit status for default/help/version, invalid options, extra arguments
-and failed output. These are CLI integration checks, not monitoring unit tests.
-
-Optional install without root:
+Controlled example from the repository root:
 
 ```bash
-cmake --install build --prefix "$HOME/.local"
-"$HOME/.local/bin/pulsetrace" --version
+fixture_dir=$(mktemp -d)
+mkdir "$fixture_dir/20" "$fixture_dir/3" "$fixture_dir/self"
+./build/pulsetrace --list-pids --proc-root "$fixture_dir"
+rmdir "$fixture_dir/20" "$fixture_dir/3" "$fixture_dir/self" "$fixture_dir"
 ```
 
-For a separate Clang build, install clang then configure with a fresh build folder
-and `-DCMAKE_CXX_COMPILER=clang++`. Never change compilers inside a configured tree.
-Clang support is configured but was not verified in the initial environment.
+Expected output:
 
-## Engineering notes
+```text
+3
+20
+```
 
-See [architecture](docs/architecture.md) for boundaries, data flow, planned threading
-and metric semantics; [milestones](docs/milestones.md) for acceptance criteria and
-code-reading exercises; [engineering journal](docs/engineering-journal.md) for
-verified evidence. Warnings belong to our target, not global compiler flags.
-Build directories and generated headers are excluded from Git.
+Exit status: 0 successful scan; 1 operational failure (partial output is possible);
+2 invalid usage. Disappearing candidates are counted on stderr. This is a best-effort
+view of the mounted proc filesystem, not an atomic snapshot or host-wide guarantee.
 
-Benchmarks, screenshots and debugging case studies will be added when those
-features and measurements exist. There are no performance or production-readiness
-claims at this stage.
+## Tests and sanitizers
+
+CTest runs a Catch2 suite (nine cases) and a CLI contract script (nine scenarios).
+Run `./build/process_discovery_tests` to see the detailed counts and any skips.
+The permission-denial case skips as root: run tests unprivileged for that coverage.
+
+```bash
+cmake -S . -B build-sanitize -G Ninja \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DPULSETRACE_WARNINGS_AS_ERRORS=ON \
+  -DPULSETRACE_SANITIZERS=ON \
+  -DPULSETRACE_CATCH2_DIR="$PWD/../Catch2/extras"
+cmake --build build-sanitize --parallel
+UBSAN_OPTIONS=halt_on_error=1 ctest --test-dir build-sanitize --output-on-failure
+```
+
+In the development sandbox, LeakSanitizer could not open /proc/PID/task and aborted.
+The ASan/UBSan-only verification used the following environment override. Do not use
+it as evidence of a passing leak check:
+
+```bash
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+  ctest --test-dir build-sanitize --output-on-failure
+```
+
+The sanitizer option instruments project code; the external Catch2 implementation
+is built separately. ThreadSanitizer is deferred until concurrency exists.
+
+## Design and debugging
+
+- [Architecture](docs/architecture.md): component boundaries, data flow and planned threading.
+- [Milestone 1 guide](docs/milestone-1.md): code walkthrough, ownership, complexity,
+  actual failed tests and fixes, limitations and an exercise.
+- [Milestone plan](docs/milestones.md): acceptance criteria and next steps.
+- [Engineering journal](docs/engineering-journal.md): evidence we actually produced.
+
+Optional install: `cmake --install build --prefix "$HOME/.local"`.
+Warnings are target-scoped. Generated headers and build outputs are not committed.
+Screenshots, benchmarks and deeper debugging exercises will be added when they
+exist. No measured performance or production-readiness claims are made yet.

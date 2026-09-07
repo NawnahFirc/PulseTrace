@@ -1,7 +1,8 @@
 # Architecture proposal
 
-This document describes the intended engine. Milestone 0 implements only the
-executable, build configuration, generated version header, and CLI checks.
+This document describes the intended engine. Milestone 1 implements synchronous
+process discovery in pulsetrace_core, a PID-listing CLI, and fixture tests.
+See milestone-1.md for the current implementation and its limits.
 
 ## Components and boundaries
 
@@ -20,7 +21,7 @@ executable, build configuration, generated version header, and CLI checks.
 These are responsibilities, not a requirement for one class per row. Parsers,
 calculations and individual rules should be functions when no state is needed.
 No EventBus, inheritance hierarchy, singleton logger or general plugin framework.
-Introduce a core library target when Milestone 1 has reusable implementation.
+The core library target was introduced in Milestone 1 for reusable discovery.
 
 ## Data flow
 

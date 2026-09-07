@@ -10,7 +10,7 @@ CTest CLI contract; install target; formatting policy; architecture documentatio
 Acceptance: configure and compile a Debug build with -Werror; no diagnostics;
 run executable; CTest verifies exit codes and stdout/stderr independently,
 including output failure. No monitoring, dependencies, worker threads or network.
-CMake script testing is enough for this CLI boundary; GoogleTest enters with M1.
+CMake script testing is enough for this CLI boundary; Catch2 enters with M1 (the original GoogleTest choice was revised).
 
 Code reading:
 - target_compile_features declares the target's language requirement. PRIVATE
@@ -33,11 +33,11 @@ Commits: build: initialize Linux C++20 executable and CMake configuration;
 test: verify command-line output and exit contracts;
 docs: define architecture and incremental development plan.
 
-## Milestone 1: process discovery (not implemented)
+## Milestone 1: process discovery (implemented; validation limits documented)
 
 Scope: reusable core target; Linux process discovery with explicit injectable
 std::filesystem::path root defaulting to /proc; small PID value type with validated
-positive range; CLI --list-pids; GoogleTest fixture tests. No metadata or CPU yet.
+positive range; CLI --list-pids; Catch2 fixture tests. No metadata or CPU yet.
 
 Implementation policy:
 - Inspect root entries; accept only directory names made entirely of ASCII digits,
@@ -59,8 +59,8 @@ an unprivileged user or explicitly skip with reason when run as root. Live /proc
 smoke test must not assert a fixed process count. Compile warning-clean and run
 unit tests under AddressSanitizer/UndefinedBehaviorSanitizer where supported.
 
-Dependency: GoogleTest, installed explicitly rather than silently downloaded by
-CMake. Document/test a supported version when it is introduced. CTest drives both
+Dependency: Catch2 3.8.1, supplied explicitly rather than silently downloaded by
+CMake. See README.md for explicit dependency setup. CTest drives both
 unit and CLI tests. This dependency improves fixture/assertion quality.
 
 Exercise: why can a PID disappear immediately after discovery? Why is a vector
@@ -86,3 +86,5 @@ Unsafe debugging exercises will live in explicitly isolated exercise directories
 branches, excluded from normal builds. Each records symptoms, reproduction,
 hypothesis, investigation/tools, root cause, fix, regression test and measured
 performance impact when relevant. Do not claim an exercise has occurred in advance.
+
+Milestone 1 implementation and actual validation limits are recorded in [the guide](milestone-1.md).
