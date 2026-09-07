@@ -35,6 +35,7 @@ pulsetrace_target_defaults(pulsetrace)
 
 include(CTest)
 if(BUILD_TESTING)
+    include(cmake/Testing.cmake)
     add_test(NAME cli_contract COMMAND "${CMAKE_COMMAND}"
         "-DPROGRAM=$<TARGET_FILE:pulsetrace>"
         "-DEXPECTED_VERSION=${PROJECT_VERSION}"
